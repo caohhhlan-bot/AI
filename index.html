@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>包装内外箱尺寸计算器 | Amazon FBA</title>
+<style>
+  :root{
+    --primary:#6366f1;--primary-dark:#5457e5;--primary-grad-1:#7c3aed;--primary-grad-2:#6366f1;
+    --orange:#f97316;--bg:#f5f7fa;--card:#fff;--text:#1f2937;--text-light:#6b7280;
+    --border:#e5e7eb;--radius:14px;--shadow:0 4px 20px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .header{background:linear-gradient(135deg,var(--primary-grad-1),var(--primary-grad-2));color:#fff;padding:28px 20px 30px;text-align:center;border-radius:0 0 24px 24px;box-shadow:0 6px 24px rgba(99,102,241,.25)}
+  .header h1{font-size:24px;font-weight:700;letter-spacing:.5px}
+  .header p{margin-top:8px;font-size:13px;opacity:.92}
+  .wrap{max-width:1140px;margin:0 auto;padding:22px 16px 50px}
+  .grid{display:grid;grid-template-columns:460px 1fr;gap:22px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;border:1px solid #eef0f4}
+  .card+.card{margin-top:18px}
+  .section-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--primary-dark);margin:6px 0 14px;padding-bottom:10px;border-bottom:2px solid #f0f1f6}
+  .section-title .dot{width:8px;height:8px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
+  .section-title:first-of-type{margin-top:0}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;color:var(--text-light);margin-bottom:6px;font-weight:500}
+  .field label .unit{color:#9aa0aa;font-weight:400}
+  .field label .hint{color:#9aa0aa;font-weight:400;font-size:11.5px;margin-left:4px}
+  input[type=number],select{
+    width:100%;padding:9px 12px;font-size:14px;border:1.5px solid var(--border);border-radius:9px;
+    background:#fafbff;color:var(--text);outline:none;transition:border .15s,box-shadow .15s;
+  }
+  select{cursor:pointer;appearance:auto}
+  input[type=number]::placeholder{color:#c2c6d0}
+  input[type=number]:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.15);background:#fff}
+  .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .row3 .field{margin-bottom:0}
+  .err{color:#b91c1c;font-size:12.5px;margin-top:10px;display:none}
+  .err.show{display:block}
+  .warn{color:#b45309;font-size:12.5px;margin-top:8px;display:none}
+  .warn.show{display:block}
+  .btns{display:flex;gap:10px;margin-top:16px}
+  .btn{padding:12px 18px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:transform .1s,box-shadow .15s,background .15s;flex:1}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.35)}
+  .btn-primary:hover{background:var(--primary-dark)}
+  .result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px}
+  .result-item{background:linear-gradient(180deg,#fafbff,#f4f5fb);border:1px solid #eef0f4;border-radius:10px;padding:11px 12px;text-align:center}
+  .result-item .k{font-size:11.5px;color:var(--text-light);margin-bottom:4px}
+  .result-item .v{font-size:18px;font-weight:700;color:var(--primary-dark);line-height:1.25}
+  .result-item .v small{font-size:11px;color:var(--text-light);font-weight:500}
+  .result-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px dashed #eceef3;font-size:13.5px}
+  .result-line:last-child{border-bottom:none}
+  .result-line .k{color:var(--text-light);white-space:nowrap}
+  .result-line .v{font-weight:700;color:var(--text);text-align:right}
+  .result-line .v.purple{color:var(--primary-dark)}
+  .fba-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;margin-left:6px}
+  .fba-standard{background:#dcfce7;color:#15803d}
+  .fba-oversize{background:#fee2e2;color:#b91c1c}
+  .fba-special{background:#7f1d1d;color:#fff}
+  .fba-small{background:#dbeafe;color:#1d4ed8}
+  .viewer{position:relative;width:100%;height:360px;background:radial-gradient(circle at 50% 40%,#fbfcff,#e8ecf4);border-radius:12px;border:1px solid #eef0f4;overflow:hidden;cursor:grab}
+  .viewer:active{cursor:grabbing}
+  #three-canvas{display:block;width:100%;height:100%}
+  .viewer-hint{position:absolute;top:10px;left:12px;font-size:11.5px;color:#6b7280;background:rgba(255,255,255,.78);padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px)}
+  .legend{position:absolute;bottom:10px;left:12px;display:flex;gap:14px;font-size:11.5px;color:#525866;background:rgba(255,255,255,.78);padding:5px 11px;border-radius:20px;backdrop-filter:blur(4px)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .legend .sw-box{background:var(--orange)}
+  .legend .sw-outer{background:transparent;border:1.8px solid var(--primary)}
+  .click-label{
+    position:absolute;display:none;padding:6px 11px;background:#1f2937;color:#fff;
+    font-size:12.5px;font-weight:600;border-radius:8px;pointer-events:none;white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:5;
+  }
+  .click-label::after{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);border:6px solid transparent;border-right-color:#1f2937}
+  .note{font-size:11.5px;color:#9aa0aa;margin-top:14px;line-height:1.65}
+  .note b{color:#6b7280}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>包装内外箱尺寸计算器</h1>
+  <p>输入内箱尺寸 → 在外箱限制内自动找最优装箱 | 3D 可视化 · 可点击边查看长度</p>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- ============ LEFT: Inputs ============ -->
+    <div>
+      <div class="card">
+
+        <div class="section-title"><span class="dot"></span>输入参数</div>
+
+        <div class="row3">
+          <div class="field"><label>内箱长度 <span class="unit">(cm)</span></label><input type="number" id="innerL" placeholder="长" min="0" step="0.1"></div>
+          <div class="field"><label>内箱宽度 <span class="unit">(cm)</span></label><input type="number" id="innerW" placeholder="宽" min="0" step="0.1"></div>
+          <div class="field"><label>内箱高度 <span class="unit">(cm)</span></label><input type="number" id="innerH" placeholder="高" min="0" step="0.1"></div>
+        </div>
+
+        <div class="row3" style="margin-top:8px">
+          <div class="field"><label>装箱数量 <span class="unit">(PCS)</span><span class="hint">每箱目标件数，留空=自动</span></label><input type="number" id="qty" placeholder="自动" min="1" step="1"></div>
+          <div class="field"><label>单件重量 <span class="unit">(g)</span><span class="hint">选填</span></label><input type="number" id="itemWt" placeholder="如 500" min="0"></div>
+          <div class="field"><label>内箱朝向</label><select id="orient"><option value="flat">平放（朝上）</option><option value="stand">竖放</option><option value="auto">自动（不限）</option></select></div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px"><span class="dot"></span>外箱尺寸要求</div>
+
+        <div class="row3">
+          <div class="field"><label>外箱长度限制 <span class="unit">(cm)</span></label><input type="number" id="maxL" value="62" min="1"></div>
+          <div class="field"><label>外箱宽度限制 <span class="unit">(cm)</span></label><input type="number" id="maxW" value="62" min="1"></div>
+          <div class="field"><label>外箱高度限制 <span class="unit">(cm)</span></label><input type="number" id="maxH" value="62" min="1"></div>
+        </div>
+
+        <div class="row3" style="margin-top:8px">
+          <div class="field"><label>长余量 <span class="unit">(cm)</span></label><input type="number" id="gapL" value="2" min="0" step="0.1"></div>
+          <div class="field"><label>宽余量 <span class="unit">(cm)</span></label><input type="number" id="gapW" value="2" min="0" step="0.1"></div>
+          <div class="field"><label>高余量 <span class="unit">(cm)</span></label><input type="number" id="gapH" value="2" min="0" step="0.1"></div>
+        </div>
+
+        <div class="field" style="margin-top:8px">
+          <label>外箱重量限制 <span class="unit">(kg)</span></label>
+          <input type="number" id="maxWt" value="21" min="0" step="0.1">
+        </div>
+
+        <div class="err" id="err"></div>
+        <div class="warn" id="warn"></div>
+
+        <div class="btns">
+          <button class="btn btn-primary" id="autoBtn">自动计算最优装箱方法</button>
+        </div>
+
+        <p class="note">
+          <b>说明：</b>装箱数量留空时自动算出每箱最大件数并回填；手填时按该目标件数找最接近的可行方案。<br>
+          <b>内箱朝向：</b>平放=高度朝上；竖放=让内箱立起来；自动=不限朝向找全局最优。<br>
+          3D 中点击任意边可显示该边长度，点击箱体可显示三边尺寸。
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT: Results + 3D ============ -->
+    <div>
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>计算结果</div>
+        <div class="result-grid">
+          <div class="result-item"><div class="k">外箱实际长度</div><div class="v" id="oL">— <small>cm</small></div></div>
+          <div class="result-item"><div class="k">外箱实际宽度</div><div class="v" id="oW">— <small>cm</small></div></div>
+          <div class="result-item"><div class="k">外箱实际高度</div><div class="v" id="oH">— <small>cm</small></div></div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="result-line"><span class="k">排列方式（长×宽×高）</span><span class="v purple" id="arr">—</span></div>
+          <div class="result-line"><span class="k">内箱朝向</span><span class="v" id="orientOut">—</span></div>
+          <div class="result-line"><span class="k">每箱可装数</span><span class="v" id="perBox">— PCS</span></div>
+          <div class="result-line"><span class="k">外箱实际体积</span><span class="v" id="vol">—</span></div>
+          <div class="result-line"><span class="k">实际余量（长×宽×高）</span><span class="v" id="gaps">—</span></div>
+          <div class="result-line"><span class="k">单箱总重量</span><span class="v" id="totalWt">—</span></div>
+          <div class="result-line"><span class="k">FBA 尺寸等级</span><span class="v" id="fba">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>3D 可视化预览</div>
+        <div class="viewer">
+          <div class="viewer-hint">拖拽旋转 | 滚轮缩放 | 点击边/箱查看长度</div>
+          <canvas id="three-canvas"></canvas>
+          <div class="click-label" id="clickLabel"></div>
+          <div class="legend">
+            <span><i class="sw-box"></i>内箱</span>
+            <span><i class="sw-outer"></i>外箱边框</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const num = id => { const v = $(id).value.trim(); return v === '' ? NaN : parseFloat(v); };
+const round = (x,d=2) => Math.round(x*Math.pow(10,d))/Math.pow(10,d);
+const fmt = (x,d=2) => round(x,d).toFixed(d);
+
+/* ---------- FBA tier (US) ---------- */
+function fbaTier(L,W,H){
+  const d=[L,W,H].sort((a,b)=>b-a); const [lo,me,sh]=d;
+  const girth = lo + 2*(me+sh); const IN = x => x/2.54;
+  const loIn=IN(lo),meIn=IN(me),shIn=IN(sh),gIn=IN(girth);
+  if(loIn<=15&&meIn<=12&&shIn<=0.75) return {name:'Small Standard 小号标准',cls:'fba-small'};
+  if(loIn<=18&&meIn<=14&&shIn<=8)    return {name:'Standard 标准尺寸',cls:'fba-standard'};
+  if(loIn<=60&&meIn<=30&&gIn<=130)   return {name:'Small Oversize 小号大件',cls:'fba-oversize'};
+  if(loIn<=108&&gIn<=130)            return {name:'Medium Oversize 中号大件',cls:'fba-oversize'};
+  if(gIn<=165)                       return {name:'Large Oversize 大号大件',cls:'fba-oversize'};
+  return {name:'Special Oversize 特殊大件',cls:'fba-special'};
+}
+
+/* ---------- orientation sets ---------- */
+function orientationsFor(iL,iW,iH,mode){
+  if(mode==='flat') return [[iL,iW,iH],[iW,iL,iH]];
+  if(mode==='stand') return [[iW,iH,iL],[iH,iW,iL],[iL,iH,iW],[iH,iL,iW]];
+  return [[iL,iW,iH],[iL,iH,iW],[iW,iL,iH],[iW,iH,iL],[iH,iL,iW],[iH,iW,iL]];
+}
+
+/* ---------- enumerate all candidate arrangements ---------- */
+function findCandidates(iL,iW,iH,mL,mW,mH,gL,gW,gH,itemWt_g,maxWt_kg,mode){
+  const orients = orientationsFor(iL,iW,iH,mode);
+  const out = [];
+  for(const [il,iw,ih] of orients){
+    if(il<=0||iw<=0||ih<=0) continue;
+    const maxNL=Math.floor((mL-gL)/il);
+    const maxNW=Math.floor((mW-gW)/iw);
+    const maxNH=Math.floor((mH-gH)/ih);
+    if(maxNL<1||maxNW<1||maxNH<1) continue;
+    for(let nL=1;nL<=maxNL;nL++){
+      for(let nW=1;nW<=maxNW;nW++){
+        for(let nH=1;nH<=maxNH;nH++){
+          const items=nL*nW*nH;
+          const oL=il*nL+gL, oW=iw*nW+gW, oH=ih*nH+gH;
+          if(oL>mL+1e-9||oW>mW+1e-9||oH>mH+1e-9) continue;
+          if(itemWt_g>0&&maxWt_kg>0 && items*itemWt_g/1000>maxWt_kg+1e-9) continue;
+          out.push({nL,nW,nH,il,iw,ih,items,oL,oW,oH,outerVol:oL*oW*oH});
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------- pick best: target or max ---------- */
+function pickBest(cands, target){
+  if(!cands.length) return null;
+  const arr = cands.slice();
+  if(target && target>0){
+    arr.sort((a,b)=>{
+      const da=Math.abs(a.items-target), db=Math.abs(b.items-target);
+      if(da!==db) return da-db;
+      // prefer exact then smaller volume; if both off, prefer not exceeding target
+      const aOver = a.items>target?1:0, bOver=b.items>target?1:0;
+      if(aOver!==bOver) return aOver-bOver;
+      return a.outerVol-b.outerVol;
+    });
+  }else{
+    arr.sort((a,b)=> b.items!==a.items ? b.items-a.items : a.outerVol-b.outerVol);
+  }
+  return arr[0];
+}
+
+/* ---------- render ---------- */
+let lastResult = null;
+let autoFilledValue = null;
+let suppressQty = false;
+
+function showMsg(id, msg){
+  const e = $(id);
+  e.textContent = msg; e.classList.toggle('show', !!msg);
+}
+
+function renderEmpty(){
+  ['oL','oW','oH'].forEach(id=>$(id).innerHTML='— <small>cm</small>');
+  ['arr','orientOut','perBox','vol','gaps','totalWt','fba'].forEach(id=>$(id).textContent='—');
+  showMsg('warn','');
+  clear3D();
+}
+
+function render(r, itemWt_g, targetMet){
+  lastResult = r;
+  $('oL').innerHTML = fmt(r.oL)+' <small>cm</small>';
+  $('oW').innerHTML = fmt(r.oW)+' <small>cm</small>';
+  $('oH').innerHTML = fmt(r.oH)+' <small>cm</small>';
+  $('arr').textContent = `${r.nL} × ${r.nW} × ${r.nH}`;
+  $('orientOut').textContent = `${fmt(r.ih,1)} cm 边朝上（${fmt(r.il,1)}×${fmt(r.iw,1)} 底面）`;
+  $('perBox').textContent = r.items + ' PCS';
+  $('vol').textContent = fmt(r.outerVol) + ' cm³  (' + fmt(r.outerVol/1e6,4) + ' m³)';
+  const gL=round(r.oL-r.il*r.nL,2), gW=round(r.oW-r.iw*r.nW,2), gH=round(r.oH-r.ih*r.nH,2);
+  $('gaps').textContent = `${fmt(gL,2)} × ${fmt(gW,2)} × ${fmt(gH,2)} cm`;
+  if(itemWt_g>0){
+    $('totalWt').textContent = fmt(r.items*itemWt_g/1000,3) + ' kg';
+  }else{
+    $('totalWt').textContent = '—（请填单件重量）';
+  }
+  const tier=fbaTier(r.oL,r.oW,r.oH);
+  $('fba').innerHTML = `<span class="fba-badge ${tier.cls}">${tier.name}</span>`;
+  showMsg('warn', targetMet===false ? `无法精确达到目标件数，已选最接近的可行方案：${r.items} 件/箱。` : '');
+  update3D(r);
+}
+
+/* ---------- Three.js ---------- */
+let scene,camera,renderer,controls,boxGroup;
+const canvas = $('three-canvas');
+const clickableMeshes = [];
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function init3D(){
+  const w = canvas.clientWidth||600, h = canvas.clientHeight||360;
+  scene = new THREE.Scene(); scene.background = null;
+  camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 3000);
+  camera.position.set(40,34,48);
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(w,h,false);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+  controls.autoRotate=true; controls.autoRotateSpeed=0.7;
+  controls.minDistance=10; controls.maxDistance=400;
+  scene.add(new THREE.AmbientLight(0xffffff,0.7));
+  const dir=new THREE.DirectionalLight(0xffffff,0.85); dir.position.set(30,50,30); scene.add(dir);
+  const dir2=new THREE.DirectionalLight(0xc7d2fe,0.35); dir2.position.set(-30,20,-20); scene.add(dir2);
+  boxGroup = new THREE.Group(); scene.add(boxGroup);
+  const grid = new THREE.GridHelper(160,24,0xd6dae8,0xeef0f6); grid.position.y=-0.2; scene.add(grid);
+  animate();
+  controls.addEventListener('start',()=>{controls.autoRotate=false;});
+}
+
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
+function onResize(){ if(!renderer) return; const w=canvas.clientWidth,h=canvas.clientHeight; if(!w||!h) return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h,false); }
+new ResizeObserver(onResize).observe(canvas);
+
+function disposeMesh(m){ if(m.geometry) m.geometry.dispose(); if(m.material){ Array.isArray(m.material)?m.material.forEach(x=>x.dispose()):m.material.dispose(); } }
+
+function clear3D(){
+  if(!boxGroup) return;
+  while(boxGroup.children.length){ const c=boxGroup.children.pop(); disposeMesh(c); }
+  clickableMeshes.length = 0;
+  $('clickLabel').style.display='none';
+}
+
+/* add a thin clickable cylinder edge between two points */
+function addEdge(p1, p2, color, radius, lengthCm, source, axisLabel){
+  const dir = new THREE.Vector3().subVectors(p2,p1);
+  const len = dir.length();
+  if(len < 1e-6) return;
+  const mid = new THREE.Vector3().addVectors(p1,p2).multiplyScalar(0.5);
+  const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+  const mat = new THREE.MeshBasicMaterial({color});
+  const m = new THREE.Mesh(geo, mat);
+  m.position.copy(mid);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+  m.userData = {type:'edge', lengthCm, source, axisLabel};
+  boxGroup.add(m); clickableMeshes.push(m);
+}
+
+/* add a box (fill + 12 prominent clickable edges) */
+function addBox(cx, cy, cz, hx, hy, hz, fillColor, fillOpacity, edgeColor, edgeRadius, dimsCm, source){
+  // fill
+  const fgeo = new THREE.BoxGeometry(hx*2, hy*2, hz*2);
+  const fmat = new THREE.MeshStandardMaterial({color:fillColor, transparent:true, opacity:fillOpacity, roughness:0.55, metalness:0.05});
+  const fill = new THREE.Mesh(fgeo, fmat);
+  fill.position.set(cx,cy,cz);
+  fill.userData = {type:'box', source, dims:dimsCm};
+  boxGroup.add(fill); clickableMeshes.push(fill);
+  // corners
+  const sgn = [[-1,-1,-1],[1,-1,-1],[-1,1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,1],[1,1,1]];
+  const c = sgn.map(s=>new THREE.Vector3(cx+s[0]*hx, cy+s[1]*hy, cz+s[2]*hz));
+  const X=[[0,1],[2,3],[4,5],[6,7]], Y=[[0,2],[1,3],[4,6],[5,7]], Z=[[0,4],[1,5],[2,6],[3,7]];
+  for(const [a,b] of X) addEdge(c[a],c[b], edgeColor, edgeRadius, dimsCm.x, source, '长');
+  for(const [a,b] of Y) addEdge(c[a],c[b], edgeColor, edgeRadius, dimsCm.y, source, '高');
+  for(const [a,b] of Z) addEdge(c[a],c[b], edgeColor, edgeRadius, dimsCm.z, source, '宽');
+}
+
+function update3D(r){
+  clear3D();
+  if(!r || !renderer) return;
+  const maxDim = Math.max(r.oL, r.oW, r.oH);
+  const scale = 42 / Math.max(maxDim, 1);
+  const oL=r.oL*scale, oW=r.oW*scale, oH=r.oH*scale;
+  const bL=r.il*scale, bW=r.iw*scale, bH=r.ih*scale;
+  const rOuter={x:r.oL,y:r.oH,z:r.oW};
+  const rInner={x:r.il,y:r.ih,z:r.iw};
+  // outer box: translucent + prominent purple edges
+  addBox(0, oH/2, 0, oL/2, oH/2, oW/2, 0x6366f1, 0.07, 0x4f46e5, Math.max(oL,oW,oH)*0.012, rOuter, 'outer');
+  // inner boxes
+  const padL=(r.oL - r.il*r.nL)/2, padW=(r.oW - r.iw*r.nW)/2, padH=(r.oH - r.ih*r.nH)/2;
+  const startX=-oL/2 + padL*scale + bL/2;
+  const startZ=-oW/2 + padW*scale + bW/2;
+  const startY=padH*scale + bH/2;
+  const total = r.nL*r.nW*r.nH;
+  const cap = 60;
+  const drawAll = total <= cap;
+  let count=0;
+  const edgeR = Math.max(bL,bW,bH)*0.06; // prominent inner edges
+  for(let i=0;i<r.nL;i++){
+    for(let j=0;j<r.nW;j++){
+      for(let k=0;k<r.nH;k++){
+        if(!drawAll && count>=cap) break;
+        addBox(startX+i*bL, startY+k*bH, startZ+j*bW, bL/2, bH/2, bW/2, 0xf97316, 0.82, 0x9a3412, edgeR, rInner, 'inner');
+        count++;
+      }
+    }
+  }
+  // camera fit
+  const dist = Math.max(oL,oW,oH)*1.7 + 20;
+  camera.position.set(dist*0.7, dist*0.55, dist*0.85);
+  controls.target.set(0, oH/2, 0);
+  controls.update();
+}
+
+/* ---------- click to show edge length ---------- */
+let downX=0, downY=0, isDrag=false;
+canvas.addEventListener('mousedown', e=>{ downX=e.clientX; downY=e.clientY; isDrag=false; });
+canvas.addEventListener('mousemove', e=>{ if(Math.abs(e.clientX-downX)>4||Math.abs(e.clientY-downY)>4) isDrag=true; });
+canvas.addEventListener('mouseup', e=>{
+  if(isDrag) return;
+  const rect = canvas.getBoundingClientRect();
+  ndc.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  ndc.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(clickableMeshes, false);
+  const label = $('clickLabel');
+  if(!hits.length){ label.style.display='none'; return; }
+  // prefer edge hit if present
+  const edgeHit = hits.find(h=>h.object.userData.type==='edge');
+  const hit = edgeHit || hits[0];
+  const ud = hit.object.userData;
+  let txt;
+  if(ud.type==='edge'){
+    txt = `${ud.source==='outer'?'外箱':'内箱'} ${ud.axisLabel} = ${fmt(ud.lengthCm,2)} cm`;
+  }else{
+    txt = `${ud.source==='outer'?'外箱':'内箱'} = ${fmt(ud.dims.x,2)} × ${fmt(ud.dims.y,2)} × ${fmt(ud.dims.z,2)} cm`;
+  }
+  label.textContent = txt;
+  label.style.display='block';
+  let lx = e.clientX - rect.left + 14;
+  let ly = e.clientY - rect.top + 14;
+  // keep inside viewer
+  const vw = rect.width, vh = rect.height;
+  if(lx + 180 > vw) lx = e.clientX - rect.left - 190;
+  if(ly + 40 > vh) ly = e.clientY - rect.top - 40;
+  label.style.left = lx+'px';
+  label.style.top = ly+'px';
+});
+
+/* ---------- main calc ---------- */
+function runCalc(){
+  const v = {
+    innerL:num('innerL'), innerW:num('innerW'), innerH:num('innerH'),
+    maxL:num('maxL'), maxW:num('maxW'), maxH:num('maxH'),
+    maxWt:num('maxWt'), itemWt:num('itemWt'),
+    gapL:num('gapL'), gapW:num('gapW'), gapH:num('gapH'),
+    orient:$('orient').value,
+  };
+  // validation
+  if(isNaN(v.innerL)||isNaN(v.innerW)||isNaN(v.innerH)){ renderEmpty(); showMsg('err',''); return; }
+  if(v.innerL<=0||v.innerW<=0||v.innerH<=0){ renderEmpty(); showMsg('err','内箱三边需 > 0'); return; }
+  if(isNaN(v.maxL)||isNaN(v.maxW)||isNaN(v.maxH)||v.maxL<=0||v.maxW<=0||v.maxH<=0){ renderEmpty(); showMsg('err','请填写有效的外箱尺寸限制'); return; }
+  for(const k of ['gapL','gapW','gapH']){ if(isNaN(v[k])||v[k]<0){ renderEmpty(); showMsg('err','余量需 ≥ 0'); return; } }
+  showMsg('err','');
+
+  const itemWt_g = (!isNaN(v.itemWt)&&v.itemWt>0)?v.itemWt:0;
+  const maxWt_kg = (!isNaN(v.maxWt)&&v.maxWt>0)?v.maxWt:0;
+
+  // determine target
+  const rawQty = $('qty').value.trim();
+  let target = null;
+  if(rawQty !== ''){
+    const q = parseFloat(rawQty);
+    if(!isNaN(q) && q>0){
+      // if equals auto-filled value, treat as no target (will refresh)
+      if(autoFilledValue===null || q!==autoFilledValue) target = q;
+    }
+  }
+
+  const cands = findCandidates(v.innerL,v.innerW,v.innerH,v.maxL,v.maxW,v.maxH,v.gapL,v.gapW,v.gapH,itemWt_g,maxWt_kg,v.orient);
+  if(!cands.length){
+    renderEmpty();
+    showMsg('err','在外箱限制内找不到可行装箱方案（内箱太大或余量过大，或可切换"内箱朝向"为自动/竖放再试）。');
+    return;
+  }
+  const best = pickBest(cands, target);
+  if(!best){ renderEmpty(); showMsg('err','计算失败'); return; }
+
+  let targetMet = true;
+  if(target !== null){
+    if(best.items !== target) targetMet = false;
+  }else{
+    // auto-fill qty with max
+    suppressQty = true;
+    $('qty').value = best.items;
+    autoFilledValue = best.items;
+    suppressQty = false;
+  }
+  render(best, itemWt_g, targetMet);
+}
+
+/* ---------- events ---------- */
+$('autoBtn').addEventListener('click', runCalc);
+const inputIds = ['innerL','innerW','innerH','maxL','maxW','maxH','maxWt','itemWt','gapL','gapW','gapH','orient'];
+inputIds.forEach(id=>{
+  const el = $(id);
+  el.addEventListener('input', runCalc);
+  el.addEventListener('change', runCalc);
+});
+$('qty').addEventListener('input', ()=>{ if(suppressQty) return; autoFilledValue=null; runCalc(); });
+
+/* ---------- boot ---------- */
+init3D();
+renderEmpty();
+</script>
+</body>
+</html>
