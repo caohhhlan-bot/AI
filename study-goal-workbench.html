@@ -547,84 +547,11 @@ function load(){
   try { return migrate(JSON.parse(raw)); }
   catch(e){ return seed(); }
 }
-/* ---------- 云端同步（Supabase + Vercel） ---------- */
-var API_KEY = 'wb_studygoal_api';
-var apiCfg = loadApi();
-function loadApi(){
-  try { var r=localStorage.getItem(API_KEY); if(r){ var o=JSON.parse(r); if(o&&typeof o==='object') return o; } } catch(e){}
-  return { url:'', anonKey:'', enabled:false };
-}
-function saveApi(){ try{ localStorage.setItem(API_KEY, JSON.stringify(apiCfg)); }catch(e){} }
-
-function setApiStatus(msg,type){
-  var el=document.getElementById('apiStatus');
-  if(!el) return;
-  el.innerHTML=msg;
-  el.className='gh-status'+(type?' '+type:'');
-}
-
-async function cloudSave(){
-  if(!apiCfg.enabled || !apiCfg.url || !apiCfg.anonKey) return;
-  try {
-    var r=await fetch(apiCfg.url+'/api/data',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ json: DB })
-    });
-    if(!r.ok){ var j=await r.json().catch(function(){}); throw new Error(j&&j.error||'HTTP '+r.status); }
-    setApiStatus('已同步到云端 ✔','ok');
-  } catch(e){
-    setApiStatus('同步失败：'+e.message,'err');
-  }
-}
-
-async function cloudLoad(){
-  if(!apiCfg.enabled || !apiCfg.url || !apiCfg.anonKey) return null;
-  try {
-    setApiStatus('正在加载云端数据…','');
-    var r=await fetch(apiCfg.url+'/api/data',{ method:'GET' });
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    var j=await r.json();
-    if(!j || !j.data){ setApiStatus('云端暂无数据',''); return null; }
-    setApiStatus('已从云端加载 ✔','ok');
-    return j.data;
-  } catch(e){
-    setApiStatus('云端加载失败：'+e.message+'（本地数据不受影响）','err');
-    return null;
-  }
-}
-
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
   catch(e){ toast('保存失败：浏览器存储可能已满'); }
-  if(apiCfg.enabled) cloudSave();
 }
 DB = load();
-
-/* 页面加载后尝试从云端拉取最新数据 */
-if(apiCfg.enabled){
-  setTimeout(function(){
-    cloudLoad().then(function(cloudData){
-      if(cloudData){
-        var localVer = DB.version || 0;
-        var cloudVer = cloudData.version || 0;
-        var localLogs = (DB.logs||[]).length;
-        var cloudLogs = (cloudData.logs||[]).length;
-        // 云端数据更新（日志条数更多）时提示用户
-        if(cloudLogs > localLogs){
-          window.__pendingCloud = cloudData;
-          confirmBox({ title:'发现云端新数据', okText:'使用云端数据', icon:'refresh',
-            text:'云端有 <b>'+(cloudData.goals||[]).length+' 个目标</b>、'+cloudLogs+' 条记录，本地有 '+localLogs+' 条。',
-            warn:'选「使用云端数据」会覆盖本地；选「保持本地」则下次同步会覆盖云端。建议先确认哪边数据最新。',
-            onOk:function(){
-              DB=migrate(window.__pendingCloud); save(); closeModal(); render();
-              toast('已切换到云端数据');
-            }});
-        }
-      }
-    });
-  }, 500);
-}
 
 /* =====================================================================
    核心算法
@@ -1300,22 +1227,6 @@ function renderMe(){
      '<div id="ghStatus" class="gh-status"></div>'+
      '</div>';
 
-  h+='<div class="sec-title">'+icon('refresh',15)+'云端同步（Vercel + Supabase）<span class="line"></span></div>'+
-     '<div class="card">'+
-     '<div class="hint" style="margin:-2px 0 14px">配置后每次保存自动同步到服务器，换设备换浏览器都能恢复。<b>需要先部署 Vercel + 创建 Supabase 数据库</b>，把 API 地址和密钥填下面。</div>'+
-     '<div class="field"><label>Vercel API 地址</label><input id="api_url" type="text" placeholder="https://study-goal.vercel.app" value="'+esc(apiCfg.url)+'"></div>'+
-     '<div class="field"><label>Supabase Anon Key</label><input id="api_key" type="password" placeholder="你的 Supabase anon key" value="'+esc(apiCfg.anonKey)+'"></div>'+
-     '<div class="mrow" style="border-top:1px solid var(--line2);border-bottom:none;padding-top:14px;margin-top:2px">'+
-       '<div class="mi">'+icon('refresh',18)+'</div>'+
-       '<div class="mt"><b>同步状态</b><span>每次保存数据时自动同步。手动同步或从云端拉取。</span></div>'+
-       '<div style="display:flex;gap:8px">'+
-         '<button class="btn btn-pp btn-sm" data-act="cloudSync">'+icon('refresh',15)+'手动同步</button>'+
-         '<button class="btn btn-gh btn-sm" data-act="cloudPull">'+icon('down',15)+'拉取云端</button>'+
-       '</div>'+
-     '</div>'+
-     '<div id="apiStatus" class="gh-status"></div>'+
-     '</div>'+
-
   h+='<div class="sec-title">'+icon('phone',15)+'添加到手机主屏幕<span class="line"></span></div>'+
      '<div class="card steps">'+
      '<div class="step"><div class="no">1</div><div class="sx">用手机浏览器打开这个页面（<b>iPhone 用 Safari，安卓用 Chrome</b>）。如果是本地文件，先把它存进手机的「文件」里再打开。</div></div>'+
@@ -1325,7 +1236,7 @@ function renderMe(){
 
   h+='<div class="sec-title">'+icon('info',15)+'关于数据<span class="line"></span></div>'+
      '<div class="card"><div class="mrow"><div class="mi">'+icon('shield',18)+'</div><div class="mt">'+
-     '<b>数据本地 + 云端双保险</b><span>本地优先，离线可用；配置云端同步后，每次保存自动上传到服务器，换设备也能恢复。</span></div></div></div>';
+     '<b>所有数据只存在这台设备上</b><span>页面不连任何服务器、不上传任何内容，断网完全可用。反过来说：清浏览器缓存 / 换设备 / 用无痕模式，数据都会没。定期导出是唯一的保险。</span></div></div></div>';
 
   h+='<div class="danger-zone">'+
      '<h4>'+icon('alert',16)+'危险操作</h4>';
@@ -1702,37 +1613,6 @@ document.addEventListener('click', function(e){
 
   if(act==='ghBackup'){ backupToGitHub(); return; }
   if(act==='ghRestore'){ restoreFromGitHub(); return; }
-  if(act==='cloudSync'){
-    var url=document.getElementById('api_url').value.trim();
-    var key=document.getElementById('api_key').value.trim();
-    apiCfg.url=url; apiCfg.anonKey=key; apiCfg.enabled=!!(url && key);
-    saveApi();
-    if(!apiCfg.enabled){ setApiStatus('请填写 API 地址和密钥','err'); return; }
-    setApiStatus('正在同步…','');
-    cloudSave().then(function(){ render(); });
-    return;
-  }
-  if(act==='cloudPull'){
-    var url=document.getElementById('api_url').value.trim();
-    var key=document.getElementById('api_key').value.trim();
-    apiCfg.url=url; apiCfg.anonKey=key; apiCfg.enabled=!!(url && key);
-    saveApi();
-    if(!apiCfg.enabled){ setApiStatus('请填写 API 地址和密钥','err'); return; }
-    setApiStatus('正在拉取…','');
-    cloudLoad().then(function(cloudData){
-      if(cloudData){
-        window.__pendingCloud = cloudData;
-        confirmBox({ title:'确认覆盖本地数据', okText:'覆盖', icon:'down',
-          text:'拉取云端数据会覆盖本地所有目标和打卡记录。',
-          warn:'建议先确认哪边数据最新。',
-          onOk:function(){
-            DB=migrate(window.__pendingCloud); save(); closeModal(); render();
-            toast('已从云端拉取');
-          }});
-      }
-    });
-    return;
-  }
 });
 
 /* 周复盘四栏：输入即存 */
@@ -1752,14 +1632,6 @@ document.addEventListener('input', function(e){
     ghCfg.branch=document.getElementById('gh_branch').value.trim()||'main';
     ghCfg.file=document.getElementById('gh_file').value.trim()||'study-goal-data.json';
     ghCfg.token=document.getElementById('gh_token').value;
-    saveGh();
-  }
-  if(t.id==='api_url'||t.id==='api_key'){
-    apiCfg.url=document.getElementById('api_url').value.trim();
-    apiCfg.anonKey=document.getElementById('api_key').value.trim();
-    apiCfg.enabled=!!(apiCfg.url && apiCfg.anonKey);
-    saveApi();
-  }
     saveGh();
   }
   if(t.id==='wipeInput'){
