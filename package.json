@@ -1,0 +1,8 @@
+{
+  "name": "study-goal-workbench",
+  "version": "1.0.0",
+  "description": "学习目标管理台 - Vercel Serverless 后端",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
